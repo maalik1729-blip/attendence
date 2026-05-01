@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "Attendance",
+    "slug": "attendance",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.example.attendance",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Used to capture a selfie for attendance.",
+        "NSLocationWhenInUseUsageDescription": "Used to geo-tag attendance check-ins.",
+        "NSPhotoLibraryUsageDescription": "Used to select a profile photo."
+      }
+    },
+    "android": {
+      "package": "com.example.attendance",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "permissions": ["CAMERA", "ACCESS_FINE_LOCATION"]
+    },
+    "web": { "favicon": "./assets/favicon.png" },
+    "plugins": [
+      ["expo-camera", { "cameraPermission": "Allow Attendance to access your camera." }],
+      ["expo-location", { "locationWhenInUsePermission": "Allow Attendance to use your location." }]
+    ],
+    "extra": {
+      "apiBaseUrl": "http://192.168.1.14:5000"
+    }
+  }
+}

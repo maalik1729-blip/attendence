@@ -1,0 +1,26 @@
+name: Security audit
+
+on:
+  schedule:
+    - cron: '0 2 * * 1'   # every Monday 02:00 UTC
+  workflow_dispatch:
+
+jobs:
+  audit:
+    name: npm audit (backend + frontend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Audit backend
+        working-directory: backend
+        run: |
+          npm ci || npm install
+          npm audit --omit=dev --audit-level=high
+      - name: Audit frontend
+        working-directory: frontend
+        run: |
+          npm ci || npm install
+          npm audit --omit=dev --audit-level=high
