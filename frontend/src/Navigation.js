@@ -5,11 +5,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Pressable, View, Text, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from './ThemeContext';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Pressable, View, Text, ActivityIndicator } from 'react-native';
+
 
 import { useAuth } from './AuthContext';
-import { COLORS } from './config';
 
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
