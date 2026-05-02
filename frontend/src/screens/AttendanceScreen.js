@@ -1,5 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Alert, Image, Platform, Pressable } from 'react-native';
+import React, { useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  Image,
+  Pressable,
+  Animated,
+} from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
 import { api } from '../api';
@@ -12,32 +20,38 @@ export default function AttendanceScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [photo, setPhoto] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [capturing, setCapturing] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
+  const [faceDetected, setFaceDetected] = useState(false);
+  const captureTriggered = useRef(false);
   const cameraRef = useRef(null);
 
-  useEffect(() => {
-    (async () => {
-      if (!permission?.granted) await requestPermission();
-    })();
-  }, [permission, requestPermission]);
+  // Called continuously by CameraView when faces change
+  const onFacesDetected = ({ faces }) => {
+    const detected = faces && faces.length > 0;
+    setFaceDetected(detected);
+
+    // Auto-capture once when face first appears
+    if (detected && !captureTriggered.current && !photo && cameraReady) {
+      captureTriggered.current = true;
+      takePhoto();
+    }
+  };
 
   const takePhoto = async () => {
-    if (!cameraRef.current || capturing || !cameraReady) return;
-    setCapturing(true);
+    if (!cameraRef.current) return;
     try {
-      const shot = await cameraRef.current.takePictureAsync({ quality: 0.7 });
+      const shot = await cameraRef.current.takePictureAsync({ quality: 0.8 });
       if (shot?.uri) setPhoto(shot);
-    } catch (err) {
-      Alert.alert('Camera error', 'Could not capture photo. Please try again.');
-    } finally {
-      setCapturing(false);
+    } catch {
+      // If auto-capture fails, user can retake manually
+      captureTriggered.current = false;
     }
   };
 
   const retake = () => {
     setPhoto(null);
-    setCameraReady(false);
+    setFaceDetected(false);
+    captureTriggered.current = false;
   };
 
   const submit = async () => {
@@ -72,7 +86,7 @@ export default function AttendanceScreen({ navigation }) {
       }
 
       await api.checkIn(form);
-      Alert.alert('Success', 'Attendance marked', [
+      Alert.alert('Success', 'Attendance marked ✓', [
         { text: 'OK', onPress: () => navigation.navigate('Home') },
       ]);
     } catch (err) {
@@ -107,19 +121,14 @@ export default function AttendanceScreen({ navigation }) {
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
       {photo ? (
-        <Image source={{ uri: photo.uri }} style={{ flex: 1 }} resizeMode="cover" />
-      ) : (
-        <CameraView
-          ref={cameraRef}
-          style={{ flex: 1 }}
-          facing="front"
-          onCameraReady={() => setCameraReady(true)}
-        />
-      )}
-
-      <View style={styles.bar}>
-        {photo ? (
-          <>
+        /* ── Captured preview ── */
+        <>
+          <Image source={{ uri: photo.uri }} style={{ flex: 1 }} resizeMode="cover" />
+          {/* Green face-detected overlay on preview */}
+          <View style={styles.ovalWrap} pointerEvents="none">
+            <View style={[styles.oval, styles.ovalGreen]} />
+          </View>
+          <View style={styles.bar}>
             <Button
               title="Retake"
               variant="outline"
@@ -132,22 +141,39 @@ export default function AttendanceScreen({ navigation }) {
               onPress={submit}
               loading={submitting}
             />
-          </>
-        ) : (
-          <View style={styles.shutterRow}>
-            <Text style={styles.hint}>
-              {cameraReady ? 'Tap to capture' : 'Starting camera…'}
-            </Text>
-            <Pressable
-              onPress={takePhoto}
-              disabled={!cameraReady || capturing}
-              style={[styles.shutter, (!cameraReady || capturing) && { opacity: 0.4 }]}
-            >
-              <View style={styles.shutterInner} />
-            </Pressable>
           </View>
-        )}
-      </View>
+        </>
+      ) : (
+        /* ── Live camera ── */
+        <>
+          <CameraView
+            ref={cameraRef}
+            style={{ flex: 1 }}
+            facing="front"
+            onCameraReady={() => setCameraReady(true)}
+            onFacesDetected={onFacesDetected}
+            faceDetectorSettings={{
+              mode: 'fast',
+              detectLandmarks: 'none',
+              runClassifications: 'none',
+              minDetectionInterval: 150,
+              tracking: true,
+            }}
+          />
+
+          {/* Oval face guide — green when face detected */}
+          <View style={styles.ovalWrap} pointerEvents="none">
+            <View style={[styles.oval, faceDetected ? styles.ovalGreen : styles.ovalIdle]} />
+          </View>
+
+          {/* Status bar */}
+          <View style={styles.bar}>
+            <Text style={[styles.hint, faceDetected && styles.hintGreen]}>
+              {faceDetected ? '✓ Face detected — capturing…' : 'Position your face in the oval'}
+            </Text>
+          </View>
+        </>
+      )}
     </View>
   );
 }
@@ -160,33 +186,42 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.bg,
     padding: 16,
   },
-  bar: {
-    flexDirection: 'row',
-    padding: 16,
-    backgroundColor: 'rgba(0,0,0,0.75)',
-  },
-  shutterRow: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 12,
-  },
-  hint: {
-    color: '#ccc',
-    fontSize: 14,
-  },
-  shutter: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 4,
-    borderColor: '#fff',
+  ovalWrap: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  shutterInner: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#fff',
+  oval: {
+    width: 210,
+    height: 270,
+    borderRadius: 135,
+    borderWidth: 3,
+    marginBottom: 80, // shift up a bit from bar
+  },
+  ovalIdle: {
+    borderColor: 'rgba(255,255,255,0.5)',
+  },
+  ovalGreen: {
+    borderColor: '#00e676',
+    shadowColor: '#00e676',
+    shadowOpacity: 0.8,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  bar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+  },
+  hint: {
+    flex: 1,
+    color: '#aaa',
+    fontSize: 15,
+    textAlign: 'center',
+  },
+  hintGreen: {
+    color: '#00e676',
+    fontWeight: '700',
   },
 });
