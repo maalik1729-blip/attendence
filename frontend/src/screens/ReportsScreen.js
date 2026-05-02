@@ -2,12 +2,14 @@ import { useTheme } from '../ThemeContext';
 import React, { useCallback, useState } from 'react';
 import { Text, View, FlatList, RefreshControl, ActivityIndicator } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../api';
 import { Card, Screen } from '../ui';
 
 
 export default function ReportsScreen() {
   const { theme: COLORS } = useTheme();
+  const insets = useSafeAreaInsets();
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -32,7 +34,7 @@ export default function ReportsScreen() {
 
   return (
     <FlatList
-      style={{ backgroundColor: COLORS.bg }}
+      style={{ backgroundColor: COLORS.bg, paddingTop: insets.top }}
       contentContainerStyle={{ padding: 16 }}
       data={records}
       keyExtractor={(item) => item._id}

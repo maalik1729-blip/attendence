@@ -2,7 +2,7 @@ import { useTheme } from '../ThemeContext';
 import React, { useState } from 'react';
 import { Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { api } from '../api';
-import { Button, Card, Field, Screen, inputStyle } from '../ui';
+import { Button, Card, Field, Screen, getInputStyle } from '../ui';
 
 
 export default function RegisterScreen({ navigation }) {
@@ -15,6 +15,7 @@ export default function RegisterScreen({ navigation }) {
     email: '',
   });
   const [loading, setLoading] = useState(false);
+  const inputStyle = getInputStyle(COLORS);
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
 
   const submit = async () => {
@@ -56,10 +57,10 @@ export default function RegisterScreen({ navigation }) {
           </Text>
           <Card>
             <Field label="First name">
-              <TextInput style={inputStyle} value={form.firstName} onChangeText={set('firstName')} />
+              <TextInput style={inputStyle} value={form.firstName} onChangeText={set('firstName')} placeholderTextColor={COLORS.muted} />
             </Field>
             <Field label="Last name">
-              <TextInput style={inputStyle} value={form.lastName} onChangeText={set('lastName')} />
+              <TextInput style={inputStyle} value={form.lastName} onChangeText={set('lastName')} placeholderTextColor={COLORS.muted} />
             </Field>
             <Field label="Username">
               <TextInput
@@ -67,6 +68,7 @@ export default function RegisterScreen({ navigation }) {
                 autoCapitalize="none"
                 value={form.username}
                 onChangeText={set('username')}
+                placeholderTextColor={COLORS.muted}
               />
             </Field>
             <Field label="Mobile (10 digits)">
@@ -76,6 +78,7 @@ export default function RegisterScreen({ navigation }) {
                 maxLength={10}
                 value={form.mobile}
                 onChangeText={set('mobile')}
+                placeholderTextColor={COLORS.muted}
               />
             </Field>
             <Field label="Email">
@@ -85,6 +88,7 @@ export default function RegisterScreen({ navigation }) {
                 keyboardType="email-address"
                 value={form.email}
                 onChangeText={set('email')}
+                placeholderTextColor={COLORS.muted}
               />
             </Field>
             <Button title="Submit request" onPress={submit} loading={loading} />

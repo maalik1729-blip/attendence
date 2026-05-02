@@ -2,7 +2,7 @@ import { useTheme } from '../ThemeContext';
 import React, { useState } from 'react';
 import { Text, TextInput, View, KeyboardAvoidingView, Platform, Alert, ScrollView } from 'react-native';
 import { useAuth } from '../AuthContext';
-import { Button, Card, Field, Screen, inputStyle } from '../ui';
+import { Button, Card, Field, Screen, getInputStyle } from '../ui';
 
 
 export default function LoginScreen({ navigation }) {
@@ -11,6 +11,7 @@ export default function LoginScreen({ navigation }) {
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const inputStyle = getInputStyle(COLORS);
 
   const submit = async () => {
     if (!mobile || !password) {
@@ -45,6 +46,7 @@ export default function LoginScreen({ navigation }) {
                 value={mobile}
                 onChangeText={setMobile}
                 placeholder="10-digit mobile"
+                placeholderTextColor={COLORS.muted}
                 style={inputStyle}
               />
             </Field>
@@ -54,6 +56,7 @@ export default function LoginScreen({ navigation }) {
                 value={password}
                 onChangeText={setPassword}
                 placeholder="Password"
+                placeholderTextColor={COLORS.muted}
                 style={inputStyle}
               />
             </Field>

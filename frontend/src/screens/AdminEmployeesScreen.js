@@ -9,6 +9,7 @@ import {
   Image,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../api';
 import { Button, Card, Screen } from '../ui';
 import { useTheme } from '../ThemeContext';
@@ -16,6 +17,8 @@ import { useTheme } from '../ThemeContext';
 
 export default function AdminEmployeesScreen({ navigation }) {
   const { theme: COLORS } = useTheme();
+  const insets = useSafeAreaInsets();
+  const styles = getStyles(COLORS);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -69,7 +72,7 @@ export default function AdminEmployeesScreen({ navigation }) {
 
   return (
     <FlatList
-      style={{ backgroundColor: COLORS.bg }}
+      style={{ backgroundColor: COLORS.bg, paddingTop: insets.top }}
       contentContainerStyle={{ padding: 16 }}
       data={items}
       keyExtractor={(i) => i._id}
@@ -161,7 +164,7 @@ export default function AdminEmployeesScreen({ navigation }) {
   );
 }
 
-const styles = {
+const getStyles = (COLORS) => ({
   faceRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -194,4 +197,4 @@ const styles = {
   actions: {
     flexDirection: 'row',
   },
-};
+});

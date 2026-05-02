@@ -78,7 +78,7 @@ const getStyles = (COLORS) => StyleSheet.create({
 });
 
 export const getInputStyle = (COLORS) => ({
-  backgroundColor: '#fff',
+  backgroundColor: COLORS.card,
   borderWidth: 1,
   borderColor: COLORS.border,
   borderRadius: 10,
