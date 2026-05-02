@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Pressable, View, Text, ActivityIndicator } from 'react-native';
+import { Pressable, View, Text, ActivityIndicator, DeviceEventEmitter } from 'react-native';
 
 import { useAuth } from './AuthContext';
 import { COLORS } from './config';
@@ -31,12 +31,19 @@ function Icon({ label, focused }) {
 }
 
 // Center attendance button — big round accent
-function AttendanceTabButton({ onPress }) {
+function AttendanceTabButton(props) {
+  const isFocused = props.accessibilityState?.selected;
   return (
     <Pressable
-      onPress={onPress}
+      onPress={(e) => {
+        if (isFocused) {
+          DeviceEventEmitter.emit('TAKE_PHOTO');
+        } else {
+          props.onPress(e);
+        }
+      }}
       style={{
-        top: -20,
+        top: -15,
         width: 64,
         height: 64,
         borderRadius: 32,

@@ -8,6 +8,7 @@ import {
   Pressable,
   Animated,
   Dimensions,
+  DeviceEventEmitter,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
@@ -23,6 +24,13 @@ export default function AttendanceScreen({ navigation }) {
   const [submitting, setSubmitting] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const cameraRef = useRef(null);
+
+  React.useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('TAKE_PHOTO', () => {
+      if (!photo && cameraReady) takePhoto();
+    });
+    return () => sub.remove();
+  }, [cameraReady, photo]);
 
   const takePhoto = async () => {
     if (!cameraRef.current) return;
@@ -140,15 +148,6 @@ export default function AttendanceScreen({ navigation }) {
           {/* Oval face guide */}
           <View style={styles.ovalWrap} pointerEvents="none">
             <View style={[styles.oval, styles.ovalIdle]} />
-          </View>
-
-          {/* Status bar */}
-          <View style={styles.bar}>
-            <Button
-              title="Take Photo"
-              style={{ flex: 1 }}
-              onPress={takePhoto}
-            />
           </View>
         </>
       )}
