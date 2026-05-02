@@ -31,7 +31,7 @@
     },
     "web": { "favicon": "./assets/favicon.png" },
     "plugins": [
-      ["expo-camera", { "cameraPermission": "Allow Attendance to access your camera." }],
+      ["react-native-vision-camera", { "cameraPermissionText": "Allow Attendance to access your camera." }],
       ["expo-location", { "locationWhenInUsePermission": "Allow Attendance to use your location." }]
     ],
     "extra": {
