@@ -1,16 +1,20 @@
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Alert,
   Image,
-  Pressable,
-  Animated,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as FileSystem from 'expo-file-system';
 import * as Location from 'expo-location';
+import * as tf from '@tensorflow/tfjs';
+import '@tensorflow/tfjs-react-native';
+import * as blazeface from '@tensorflow-models/blazeface';
+import { decodeJpeg } from '@tensorflow/tfjs-react-native';
 import { api } from '../api';
 import { Button } from '../ui';
 import { COLORS } from '../config';
@@ -23,38 +27,99 @@ export default function AttendanceScreen({ navigation }) {
   const [submitting, setSubmitting] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [faceDetected, setFaceDetected] = useState(false);
+  const [modelReady, setModelReady] = useState(false);
+
   const captureTriggered = useRef(false);
   const cameraRef = useRef(null);
+  const modelRef = useRef(null);
+  const intervalRef = useRef(null);
+  const detectingRef = useRef(false);
 
-  // Called continuously by CameraView when faces change
-  const onFacesDetected = ({ faces }) => {
-    const detected = faces && faces.length > 0;
-    setFaceDetected(detected);
+  // ── Load TF.js + BlazeFace model on mount ──────────────────────────────────
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      await tf.ready();
+      const m = await blazeface.load();
+      if (mounted) {
+        modelRef.current = m;
+        setModelReady(true);
+      }
+    })();
+    return () => {
+      mounted = false;
+      stopDetection();
+    };
+  }, []);
 
-    // Auto-capture once when face first appears
-    if (detected && !captureTriggered.current && !photo && cameraReady) {
-      captureTriggered.current = true;
-      takePhoto();
+  useEffect(() => {
+    (async () => {
+      if (!permission?.granted) await requestPermission();
+    })();
+  }, [permission, requestPermission]);
+
+  // ── Start/stop detection loop ───────────────────────────────────────────────
+  const stopDetection = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
   };
 
-  const takePhoto = async () => {
-    if (!cameraRef.current) return;
+  const detectFace = useCallback(async () => {
+    if (!cameraRef.current || captureTriggered.current || detectingRef.current) return;
+    detectingRef.current = true;
     try {
-      const shot = await cameraRef.current.takePictureAsync({ quality: 0.8 });
-      if (shot?.uri) setPhoto(shot);
-    } catch {
-      // If auto-capture fails, user can retake manually
-      captureTriggered.current = false;
-    }
-  };
+      // Take low-quality snapshot for fast inference
+      const snap = await cameraRef.current.takePictureAsync({ quality: 0.25 });
+      if (!snap?.uri) return;
 
+      // Read as base64
+      const b64 = await FileSystem.readAsStringAsync(snap.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      // Decode to tensor
+      const binaryStr = atob(b64);
+      const bytes = new Uint8Array(binaryStr.length);
+      for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+      const tensor = decodeJpeg(bytes);
+
+      // Run BlazeFace inference
+      const predictions = await modelRef.current.estimateFaces(tensor, false);
+      tf.dispose(tensor);
+
+      const detected = predictions && predictions.length > 0;
+      setFaceDetected(detected);
+
+      if (detected && !captureTriggered.current) {
+        captureTriggered.current = true;
+        stopDetection();
+        // Capture full-quality photo
+        const fullShot = await cameraRef.current.takePictureAsync({ quality: 0.8 });
+        if (fullShot?.uri) setPhoto(fullShot);
+      }
+    } catch {
+      // Skip this frame silently
+    } finally {
+      detectingRef.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!cameraReady || !modelReady || photo) return;
+    intervalRef.current = setInterval(detectFace, 500);
+    return stopDetection;
+  }, [cameraReady, modelReady, photo, detectFace]);
+
+  // ── Retake ─────────────────────────────────────────────────────────────────
   const retake = () => {
     setPhoto(null);
     setFaceDetected(false);
     captureTriggered.current = false;
   };
 
+  // ── Submit attendance ──────────────────────────────────────────────────────
   const submit = async () => {
     if (!photo) return;
     if (mustChangePassword) {
@@ -100,6 +165,7 @@ export default function AttendanceScreen({ navigation }) {
     }
   };
 
+  // ── Permission states ──────────────────────────────────────────────────────
   if (!permission) {
     return (
       <View style={styles.center}>
@@ -107,7 +173,6 @@ export default function AttendanceScreen({ navigation }) {
       </View>
     );
   }
-
   if (!permission.granted) {
     return (
       <View style={styles.center}>
@@ -119,13 +184,12 @@ export default function AttendanceScreen({ navigation }) {
     );
   }
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
       {photo ? (
-        /* ── Captured preview ── */
         <>
           <Image source={{ uri: photo.uri }} style={{ flex: 1 }} resizeMode="cover" />
-          {/* Green face-detected overlay on preview */}
           <View style={styles.ovalWrap} pointerEvents="none">
             <View style={[styles.oval, styles.ovalGreen]} />
           </View>
@@ -145,33 +209,33 @@ export default function AttendanceScreen({ navigation }) {
           </View>
         </>
       ) : (
-        /* ── Live camera ── */
         <>
           <CameraView
             ref={cameraRef}
             style={{ flex: 1 }}
             facing="front"
             onCameraReady={() => setCameraReady(true)}
-            onFacesDetected={onFacesDetected}
-            faceDetectorSettings={{
-              mode: 'fast',
-              detectLandmarks: 'none',
-              runClassifications: 'none',
-              minDetectionInterval: 150,
-              tracking: true,
-            }}
           />
 
-          {/* Oval face guide — green when face detected */}
+          {/* Oval face guide */}
           <View style={styles.ovalWrap} pointerEvents="none">
             <View style={[styles.oval, faceDetected ? styles.ovalGreen : styles.ovalIdle]} />
           </View>
 
           {/* Status bar */}
           <View style={styles.bar}>
-            <Text style={[styles.hint, faceDetected && styles.hintGreen]}>
-              {faceDetected ? '✓ Face detected — capturing…' : 'Position your face in the oval'}
-            </Text>
+            {!modelReady ? (
+              <View style={styles.loadRow}>
+                <ActivityIndicator size="small" color="#fff" />
+                <Text style={[styles.hint, { marginLeft: 10 }]}>Loading face model…</Text>
+              </View>
+            ) : (
+              <Text style={[styles.hint, faceDetected && styles.hintGreen]}>
+                {faceDetected
+                  ? '✓ Face detected — capturing…'
+                  : 'Position your face in the oval'}
+              </Text>
+            )}
           </View>
         </>
       )}
@@ -218,6 +282,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     backgroundColor: 'rgba(0,0,0,0.75)',
+  },
+  loadRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   hint: {
     flex: 1,
