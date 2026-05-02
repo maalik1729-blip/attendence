@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -6,51 +6,55 @@ import {
   Alert,
   Image,
   Dimensions,
-  Pressable,
 } from 'react-native';
-import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { api } from '../api';
 import { Button } from '../ui';
 import { COLORS } from '../config';
 
+/**
+ * AdminFaceRegisterScreen
+ * Opens the front camera with live face detection.
+ * When a face is detected the oval turns green and the photo is auto-captured.
+ * Admin can then Submit or Retake.
+ *
+ * Route params: { employeeId, employeeName }
+ */
 export default function AdminFaceRegisterScreen({ route, navigation }) {
   const { employeeId, employeeName } = route.params ?? {};
 
-  const device = useCameraDevice('front');
-  const { hasPermission, requestPermission } = useCameraPermission();
-  
+  const [permission, requestPermission] = useCameraPermissions();
   const [photo, setPhoto] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [capturing, setCapturing] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [faceDetected, setFaceDetected] = useState(false);
+  const captureTriggered = useRef(false);
   const cameraRef = useRef(null);
 
-  useEffect(() => {
-    (async () => {
-      if (!hasPermission) {
-        await requestPermission();
-      }
-    })();
-  }, [hasPermission, requestPermission]);
+  const onFacesDetected = ({ faces }) => {
+    const detected = faces && faces.length > 0;
+    setFaceDetected(detected);
+
+    if (detected && !captureTriggered.current && !photo && cameraReady) {
+      captureTriggered.current = true;
+      takePhoto();
+    }
+  };
 
   const takePhoto = async () => {
-    if (!cameraRef.current || capturing) return;
-    setCapturing(true);
+    if (!cameraRef.current) return;
     try {
-      const shot = await cameraRef.current.takePhoto({
-        qualityPrioritization: 'balanced',
-      });
-      if (shot?.path) {
-        setPhoto({ uri: `file://${shot.path}` });
-      }
-    } catch (err) {
-      Alert.alert('Camera error', 'Could not capture. Please try again.');
-    } finally {
-      setCapturing(false);
+      const shot = await cameraRef.current.takePictureAsync({ quality: 0.8 });
+      if (shot?.uri) setPhoto(shot);
+    } catch {
+      captureTriggered.current = false;
     }
   };
 
   const retake = () => {
     setPhoto(null);
+    setFaceDetected(false);
+    captureTriggered.current = false;
   };
 
   const submit = async () => {
@@ -76,21 +80,21 @@ export default function AdminFaceRegisterScreen({ route, navigation }) {
     }
   };
 
-  if (!hasPermission) {
+  if (!permission) {
+    return (
+      <View style={styles.center}>
+        <Text style={{ color: COLORS.text }}>Requesting camera permission…</Text>
+      </View>
+    );
+  }
+
+  if (!permission.granted) {
     return (
       <View style={styles.center}>
         <Text style={{ color: COLORS.text, marginBottom: 12, textAlign: 'center' }}>
           Camera access is required to register a face.
         </Text>
         <Button title="Grant permission" onPress={requestPermission} />
-      </View>
-    );
-  }
-
-  if (device == null) {
-    return (
-      <View style={styles.center}>
-        <Text style={{ color: COLORS.text }}>No front camera found.</Text>
       </View>
     );
   }
@@ -102,15 +106,16 @@ export default function AdminFaceRegisterScreen({ route, navigation }) {
         <Text style={styles.bannerTitle}>Register Face</Text>
         <Text style={styles.bannerSub}>{employeeName}</Text>
         <Text style={styles.bannerHint}>
-          Position the employee's face in the oval to capture.
+          Position the employee's face in the oval to auto-capture.
         </Text>
       </View>
 
       {photo ? (
+        /* ── Captured preview ── */
         <>
           <Image source={{ uri: photo.uri }} style={{ flex: 1 }} resizeMode="cover" />
           <View style={styles.ovalWrap} pointerEvents="none">
-            <View style={[styles.oval, styles.ovalIdle]} />
+            <View style={[styles.oval, styles.ovalGreen]} />
           </View>
           <View style={styles.bar}>
             <Button
@@ -128,30 +133,33 @@ export default function AdminFaceRegisterScreen({ route, navigation }) {
           </View>
         </>
       ) : (
+        /* ── Live camera ── */
         <>
-          <Camera
+          <CameraView
             ref={cameraRef}
             style={{ flex: 1 }}
-            device={device}
-            isActive={!photo}
-            photo={true}
+            facing="front"
+            onCameraReady={() => setCameraReady(true)}
+            onFacesDetected={onFacesDetected}
+            faceDetectorSettings={{
+              mode: 'fast',
+              detectLandmarks: 'none',
+              runClassifications: 'none',
+              minDetectionInterval: 150,
+              tracking: true,
+            }}
           />
+
+          {/* Oval face guide */}
           <View style={styles.ovalWrap} pointerEvents="none">
-            <View style={[styles.oval, styles.ovalIdle]} />
+            <View style={[styles.oval, faceDetected ? styles.ovalGreen : styles.ovalIdle]} />
           </View>
+
+          {/* Status */}
           <View style={styles.bar}>
-            <View style={styles.shutterRow}>
-              <Text style={styles.hint}>
-                Position face and tap to capture
-              </Text>
-              <Pressable
-                onPress={takePhoto}
-                disabled={capturing}
-                style={[styles.shutter, capturing && { opacity: 0.4 }]}
-              >
-                <View style={styles.shutterInner} />
-              </Pressable>
-            </View>
+            <Text style={[styles.hint, faceDetected && styles.hintGreen]}>
+              {faceDetected ? '✓ Face detected — capturing…' : 'Position face in the oval'}
+            </Text>
           </View>
         </>
       )}
@@ -161,7 +169,7 @@ export default function AdminFaceRegisterScreen({ route, navigation }) {
 
 const { width, height } = Dimensions.get('window');
 const OVAL_W = width * 0.78;
-const OVAL_H = height * 0.50;
+const OVAL_H = height * 0.50; // slightly smaller to account for the top banner
 
 const styles = StyleSheet.create({
   center: {
@@ -207,33 +215,27 @@ const styles = StyleSheet.create({
   ovalIdle: {
     borderColor: 'rgba(255,255,255,0.5)',
   },
+  ovalGreen: {
+    borderColor: '#00e676',
+    shadowColor: '#00e676',
+    shadowOpacity: 0.9,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 0 },
+  },
   bar: {
     flexDirection: 'row',
+    alignItems: 'center',
     padding: 20,
     backgroundColor: 'rgba(0,0,0,0.8)',
   },
-  shutterRow: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 12,
-  },
   hint: {
-    color: '#ccc',
-    fontSize: 14,
+    flex: 1,
+    color: '#aaa',
+    fontSize: 15,
+    textAlign: 'center',
   },
-  shutter: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 4,
-    borderColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shutterInner: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#fff',
+  hintGreen: {
+    color: '#00e676',
+    fontWeight: '700',
   },
 });

@@ -11,9 +11,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.example.attendance",
@@ -29,29 +27,15 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "permissions": [
-        "CAMERA",
-        "ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
-      ]
+      "permissions": ["CAMERA", "ACCESS_FINE_LOCATION"]
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
+    "web": { "favicon": "./assets/favicon.png" },
     "plugins": [
-      [
-        "expo-location",
-        {
-          "locationWhenInUsePermission": "Allow Attendance to use your location."
-        }
-      ]
+      ["expo-camera", { "cameraPermission": "Allow Attendance to access your camera." }],
+      ["expo-location", { "locationWhenInUsePermission": "Allow Attendance to use your location." }]
     ],
     "extra": {
-      "apiBaseUrl": "http://192.168.1.14:5000",
-      "eas": {
-        "projectId": "9591a9f7-a4a5-4719-827e-6bac9da28fe6"
-      }
+      "apiBaseUrl": "http://192.168.1.14:5000"
     }
   }
 }
