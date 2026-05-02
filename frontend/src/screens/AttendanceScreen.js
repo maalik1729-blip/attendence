@@ -108,9 +108,9 @@ export default function AttendanceScreen({ navigation }) {
         /* ── Captured preview ── */
         <>
           <Image source={{ uri: photo.uri }} style={{ flex: 1 }} resizeMode="cover" />
-          {/* Green face-detected overlay on preview */}
+          {/* Oval face guide on preview */}
           <View style={styles.ovalWrap} pointerEvents="none">
-            <View style={[styles.oval, styles.ovalGreen]} />
+            <View style={[styles.oval, styles.ovalIdle]} />
           </View>
           <View style={styles.bar}>
             <Button

@@ -100,7 +100,7 @@ export default function AdminFaceRegisterScreen({ route, navigation }) {
         <>
           <Image source={{ uri: photo.uri }} style={{ flex: 1 }} resizeMode="cover" />
           <View style={styles.ovalWrap} pointerEvents="none">
-            <View style={[styles.oval, styles.ovalGreen]} />
+            <View style={[styles.oval, styles.ovalIdle]} />
           </View>
           <View style={styles.bar}>
             <Button
