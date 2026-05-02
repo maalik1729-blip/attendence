@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Alert, Image, Platform } from 'react-native';
+import { View, Text, StyleSheet, Alert, Image, Platform, Pressable } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
 import { api } from '../api';
@@ -20,31 +20,48 @@ export default function AttendanceScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [photo, setPhoto] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [autoCaptured, setAutoCaptured] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [capturing, setCapturing] = useState(false);
   const cameraRef = useRef(null);
+  const autoCaptureTimer = useRef(null);
 
   useEffect(() => {
     (async () => {
       if (!permission?.granted) await requestPermission();
     })();
+    return () => {
+      // Clear any pending auto-capture timer on unmount
+      if (autoCaptureTimer.current) clearTimeout(autoCaptureTimer.current);
+    };
   }, [permission, requestPermission]);
 
-  // Automatically take a photo once the camera is ready (per requirement:
-  // "open camera automatically take a photo").
-  const onCameraReady = async () => {
-    if (autoCaptured || photo) return;
-    setAutoCaptured(true);
+  // When camera reports ready, wait 800 ms for hardware to stabilise, then capture.
+  const onCameraReady = () => {
+    setCameraReady(true);
+    if (photo) return; // already have a shot
+    autoCaptureTimer.current = setTimeout(() => {
+      takePhoto();
+    }, 800);
+  };
+
+  const takePhoto = async () => {
+    if (!cameraRef.current || capturing || photo) return;
+    setCapturing(true);
     try {
-      const shot = await cameraRef.current?.takePictureAsync({ quality: 0.7, skipProcessing: true });
+      // Do NOT use skipProcessing — it causes "Image could not be captured" on many devices
+      const shot = await cameraRef.current.takePictureAsync({ quality: 0.7 });
       if (shot?.uri) setPhoto(shot);
     } catch (err) {
-      Alert.alert('Camera error', err.message);
+      Alert.alert('Camera error', 'Could not capture photo. Tap the button below to try manually.');
+    } finally {
+      setCapturing(false);
     }
   };
 
-  const retake = async () => {
+  const retake = () => {
     setPhoto(null);
-    setAutoCaptured(false);
+    setCameraReady(false);
+    if (autoCaptureTimer.current) clearTimeout(autoCaptureTimer.current);
   };
 
   const submit = async () => {
@@ -77,8 +94,6 @@ export default function AttendanceScreen({ navigation }) {
         form.append('lat', String(loc.latitude));
         form.append('lng', String(loc.longitude));
       }
-      // If a descriptor-capture native module is integrated, attach here:
-      // form.append('descriptor', JSON.stringify(descriptorArray));
 
       await api.checkIn(form);
       Alert.alert('Success', 'Attendance marked', [
@@ -94,7 +109,14 @@ export default function AttendanceScreen({ navigation }) {
     }
   };
 
-  if (!permission) return <View style={styles.center}><Text>Requesting permission…</Text></View>;
+  if (!permission) {
+    return (
+      <View style={styles.center}>
+        <Text style={{ color: COLORS.text }}>Requesting permission…</Text>
+      </View>
+    );
+  }
+
   if (!permission.granted) {
     return (
       <View style={styles.center}>
@@ -118,6 +140,7 @@ export default function AttendanceScreen({ navigation }) {
           onCameraReady={Platform.OS === 'web' ? undefined : onCameraReady}
         />
       )}
+
       <View style={styles.bar}>
         {photo ? (
           <>
@@ -125,9 +148,24 @@ export default function AttendanceScreen({ navigation }) {
             <Button title="Submit" style={{ flex: 1 }} onPress={submit} loading={submitting} />
           </>
         ) : (
-          <Text style={{ color: '#fff', textAlign: 'center', flex: 1 }}>
-            Hold steady — taking photo…
-          </Text>
+          <>
+            {/* Status text */}
+            <Text style={styles.hint}>
+              {capturing
+                ? 'Capturing…'
+                : cameraReady
+                ? 'Auto-capturing… or tap 📷'
+                : 'Starting camera…'}
+            </Text>
+            {/* Manual capture button — always visible as fallback */}
+            <Pressable
+              onPress={takePhoto}
+              disabled={!cameraReady || capturing}
+              style={[styles.captureBtn, (!cameraReady || capturing) && { opacity: 0.4 }]}
+            >
+              <Text style={{ fontSize: 26 }}>📷</Text>
+            </Pressable>
+          </>
         )}
       </View>
     </View>
@@ -135,10 +173,32 @@ export default function AttendanceScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.bg, padding: 16 },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.bg,
+    padding: 16,
+  },
   bar: {
     flexDirection: 'row',
+    alignItems: 'center',
     padding: 16,
     backgroundColor: 'rgba(0,0,0,0.75)',
+  },
+  hint: {
+    color: '#fff',
+    flex: 1,
+    fontSize: 14,
+  },
+  captureBtn: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.5)',
   },
 });
