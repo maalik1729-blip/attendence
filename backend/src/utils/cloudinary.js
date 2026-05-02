@@ -12,7 +12,7 @@ cloudinary.config({
 function uploadBuffer(buffer, folder = config.cloudinary.folder) {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
-      { folder, resource_type: 'image' },
+      { folder, resource_type: 'image', faces: true },
       (err, result) => {
         if (err) return reject(err);
         return resolve(result);

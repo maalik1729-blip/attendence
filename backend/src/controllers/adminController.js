@@ -3,7 +3,7 @@ const Attendance = require('../models/Attendance');
 const ApiError = require('../utils/ApiError');
 const { generatePassword } = require('../utils/password');
 const { sendApprovalEmail, sendRejectionEmail } = require('../utils/mailer');
-const { uploadBuffer } = require('../utils/cloudinary');
+const { uploadBuffer, cloudinary } = require('../utils/cloudinary');
 
 /** GET /api/admin/requests — pending registrations */
 async function listRequests(req, res, next) {
@@ -164,6 +164,13 @@ async function enrollFace(req, res, next) {
     if (user.role === 'admin') throw new ApiError(400, 'Cannot enroll admin face');
 
     const uploaded = await uploadBuffer(req.file.buffer);
+
+    // Ensure Cloudinary detected at least one face
+    if (!uploaded.faces || uploaded.faces.length === 0) {
+      await cloudinary.uploader.destroy(uploaded.public_id);
+      throw new ApiError(400, 'No face detected! Please ensure the employee\'s face is clearly visible.', 'NO_FACE_DETECTED');
+    }
+
     user.faceImageUrl = uploaded.secure_url;
     // Clear stale descriptor so the first check-in re-enrolls with fresh photo
     user.faceDescriptor = null;

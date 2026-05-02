@@ -1,7 +1,7 @@
 const Attendance = require('../models/Attendance');
 const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
-const { uploadBuffer } = require('../utils/cloudinary');
+const { uploadBuffer, cloudinary } = require('../utils/cloudinary');
 const { compareDescriptors, isValidDescriptor } = require('../utils/face');
 const config = require('../config');
 
@@ -60,6 +60,12 @@ async function checkIn(req, res, next) {
 
     // Upload the photo to Cloudinary
     const uploaded = await uploadBuffer(req.file.buffer);
+
+    // Ensure Cloudinary detected at least one face
+    if (!uploaded.faces || uploaded.faces.length === 0) {
+      await cloudinary.uploader.destroy(uploaded.public_id);
+      throw new ApiError(400, 'No face detected in the photo! Please ensure your face is clearly visible and try again.', 'NO_FACE_DETECTED');
+    }
 
     // First-time enrolment: save the descriptor + face image
     if (!user.faceDescriptor && descriptor) {
