@@ -8,7 +8,6 @@ import {
   Dimensions,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as FaceDetector from 'expo-face-detector';
 import { api } from '../api';
 import { Button } from '../ui';
 import { COLORS } from '../config';
@@ -28,55 +27,19 @@ export default function AdminFaceRegisterScreen({ route, navigation }) {
   const [photo, setPhoto] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
-  const [faceDetected, setFaceDetected] = useState(false);
-  const captureTriggered = useRef(false);
   const cameraRef = useRef(null);
-
-  const detectingRef = useRef(false);
-  const intervalRef = useRef(null);
-
-  const detectFaceLoop = async () => {
-    if (!cameraRef.current || captureTriggered.current || detectingRef.current || !cameraReady || photo) return;
-    detectingRef.current = true;
+  const takePhoto = async () => {
+    if (!cameraRef.current) return;
     try {
-      const snap = await cameraRef.current.takePictureAsync({ quality: 0.1, skipProcessing: true });
-      if (!snap?.uri) return;
-
-      const result = await FaceDetector.detectFacesAsync(snap.uri, {
-        mode: FaceDetector.FaceDetectorMode.fast,
-        detectLandmarks: FaceDetector.FaceDetectorLandmarks.none,
-        runClassifications: FaceDetector.FaceDetectorClassifications.none,
-      });
-
-      const detected = result && result.faces && result.faces.length > 0;
-      setFaceDetected(detected);
-
-      if (detected && !captureTriggered.current) {
-        captureTriggered.current = true;
-        if (intervalRef.current) clearInterval(intervalRef.current);
-        const fullShot = await cameraRef.current.takePictureAsync({ quality: 0.8 });
-        if (fullShot?.uri) setPhoto(fullShot);
-      }
-    } catch (e) {
+      const shot = await cameraRef.current.takePictureAsync({ quality: 0.8 });
+      if (shot?.uri) setPhoto(shot);
+    } catch {
       // ignore
-    } finally {
-      detectingRef.current = false;
     }
   };
 
-  React.useEffect(() => {
-    if (cameraReady && !photo) {
-      intervalRef.current = setInterval(detectFaceLoop, 800);
-    }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [cameraReady, photo]);
-
   const retake = () => {
     setPhoto(null);
-    setFaceDetected(false);
-    captureTriggered.current = false;
   };
 
   const submit = async () => {
@@ -166,14 +129,16 @@ export default function AdminFaceRegisterScreen({ route, navigation }) {
 
           {/* Oval face guide */}
           <View style={styles.ovalWrap} pointerEvents="none">
-            <View style={[styles.oval, faceDetected ? styles.ovalGreen : styles.ovalIdle]} />
+            <View style={[styles.oval, styles.ovalIdle]} />
           </View>
 
-          {/* Status */}
+          {/* Status bar */}
           <View style={styles.bar}>
-            <Text style={[styles.hint, faceDetected && styles.hintGreen]}>
-              {faceDetected ? '✓ Face detected — capturing…' : 'Position face in the oval'}
-            </Text>
+            <Button
+              title="Take Photo"
+              style={{ flex: 1 }}
+              onPress={takePhoto}
+            />
           </View>
         </>
       )}
