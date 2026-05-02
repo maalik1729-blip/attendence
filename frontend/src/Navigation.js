@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Pressable, View, Text, ActivityIndicator, DeviceEventEmitter } from 'react-native';
+import { Pressable, View, Text, ActivityIndicator } from 'react-native';
 
 import { useAuth } from './AuthContext';
 import { COLORS } from './config';
@@ -31,19 +31,12 @@ function Icon({ label, focused }) {
 }
 
 // Center attendance button — big round accent
-function AttendanceTabButton(props) {
-  const isFocused = props.accessibilityState?.selected;
+function AttendanceTabButton({ onPress }) {
   return (
     <Pressable
-      onPress={(e) => {
-        if (isFocused) {
-          DeviceEventEmitter.emit('TAKE_PHOTO');
-        } else {
-          props.onPress(e);
-        }
-      }}
+      onPress={onPress}
       style={{
-        top: -15,
+        top: -20,
         width: 64,
         height: 64,
         borderRadius: 32,
@@ -67,6 +60,7 @@ function EmployeeTabs() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
+        tabBarShowLabel: false,
         tabBarStyle: { height: 64, paddingBottom: 8 },
       }}
     >
@@ -104,7 +98,7 @@ function EmployeeTabs() {
 
 function AdminTabs() {
   return (
-    <Tab.Navigator screenOptions={{ headerShown: false }}>
+    <Tab.Navigator screenOptions={{ headerShown: false, tabBarShowLabel: false }}>
       <Tab.Screen name="Dashboard" component={AdminStack}
         options={{ tabBarIcon: ({ focused }) => <Icon label="DASHBOARD" focused={focused} /> }}
       />

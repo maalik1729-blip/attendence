@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { Text, View, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import { Card, Screen } from '../ui';
@@ -17,6 +18,7 @@ function Stat({ label, value, color }) {
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [summary, setSummary] = useState(null);
   const [today, setToday] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -51,8 +53,8 @@ export default function HomeScreen() {
 
   return (
     <ScrollView
-      style={{ backgroundColor: COLORS.bg }}
-      contentContainerStyle={{ padding: 16 }}
+      style={{ backgroundColor: COLORS.bg, paddingTop: insets.top }}
+      contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
