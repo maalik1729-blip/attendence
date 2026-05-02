@@ -8,7 +8,6 @@ import {
   Pressable,
   Animated,
   Dimensions,
-  DeviceEventEmitter,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
@@ -24,13 +23,6 @@ export default function AttendanceScreen({ navigation }) {
   const [submitting, setSubmitting] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const cameraRef = useRef(null);
-
-  React.useEffect(() => {
-    const sub = DeviceEventEmitter.addListener('TAKE_PHOTO', () => {
-      if (!photo && cameraReady) takePhoto();
-    });
-    return () => sub.remove();
-  }, [cameraReady, photo]);
 
   const takePhoto = async () => {
     if (!cameraRef.current) return;
@@ -149,6 +141,16 @@ export default function AttendanceScreen({ navigation }) {
           <View style={styles.ovalWrap} pointerEvents="none">
             <View style={[styles.oval, styles.ovalIdle]} />
           </View>
+
+          {/* Shutter button bar */}
+          <View style={[styles.bar, { justifyContent: 'center', paddingBottom: 40 }]}>
+            <Pressable
+              onPress={takePhoto}
+              style={({ pressed }) => [styles.captureBtn, pressed && styles.captureBtnPressed]}
+            >
+              <View style={styles.captureBtnInner} />
+            </Pressable>
+          </View>
         </>
       )}
     </View>
@@ -195,14 +197,23 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: 'rgba(0,0,0,0.75)',
   },
-  hint: {
-    flex: 1,
-    color: '#aaa',
-    fontSize: 15,
-    textAlign: 'center',
+  captureBtn: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 4,
+    borderColor: 'rgba(255,255,255,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  hintGreen: {
-    color: '#00e676',
-    fontWeight: '700',
+  captureBtnInner: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#fff',
+  },
+  captureBtnPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.95 }],
   },
 });
