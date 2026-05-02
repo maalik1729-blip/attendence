@@ -7,52 +7,29 @@ import { Button } from '../ui';
 import { COLORS } from '../config';
 import { useAuth } from '../AuthContext';
 
-/**
- * Face-descriptor capture.
- *
- * In a production build, integrate an on-device face-api.js / TFLite model to
- * compute a 128-D descriptor and pass it to the server. This screen captures
- * the photo and posts it; the backend falls back to image-only validation if
- * no descriptor is provided (clearly documented behavior).
- */
 export default function AttendanceScreen({ navigation }) {
   const { mustChangePassword } = useAuth();
   const [permission, requestPermission] = useCameraPermissions();
   const [photo, setPhoto] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [cameraReady, setCameraReady] = useState(false);
   const [capturing, setCapturing] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
   const cameraRef = useRef(null);
-  const autoCaptureTimer = useRef(null);
 
   useEffect(() => {
     (async () => {
       if (!permission?.granted) await requestPermission();
     })();
-    return () => {
-      // Clear any pending auto-capture timer on unmount
-      if (autoCaptureTimer.current) clearTimeout(autoCaptureTimer.current);
-    };
   }, [permission, requestPermission]);
 
-  // When camera reports ready, wait 800 ms for hardware to stabilise, then capture.
-  const onCameraReady = () => {
-    setCameraReady(true);
-    if (photo) return; // already have a shot
-    autoCaptureTimer.current = setTimeout(() => {
-      takePhoto();
-    }, 800);
-  };
-
   const takePhoto = async () => {
-    if (!cameraRef.current || capturing || photo) return;
+    if (!cameraRef.current || capturing || !cameraReady) return;
     setCapturing(true);
     try {
-      // Do NOT use skipProcessing — it causes "Image could not be captured" on many devices
       const shot = await cameraRef.current.takePictureAsync({ quality: 0.7 });
       if (shot?.uri) setPhoto(shot);
     } catch (err) {
-      Alert.alert('Camera error', 'Could not capture photo. Tap the button below to try manually.');
+      Alert.alert('Camera error', 'Could not capture photo. Please try again.');
     } finally {
       setCapturing(false);
     }
@@ -61,7 +38,6 @@ export default function AttendanceScreen({ navigation }) {
   const retake = () => {
     setPhoto(null);
     setCameraReady(false);
-    if (autoCaptureTimer.current) clearTimeout(autoCaptureTimer.current);
   };
 
   const submit = async () => {
@@ -137,35 +113,39 @@ export default function AttendanceScreen({ navigation }) {
           ref={cameraRef}
           style={{ flex: 1 }}
           facing="front"
-          onCameraReady={Platform.OS === 'web' ? undefined : onCameraReady}
+          onCameraReady={() => setCameraReady(true)}
         />
       )}
 
       <View style={styles.bar}>
         {photo ? (
           <>
-            <Button title="Retake" variant="outline" style={{ flex: 1, marginRight: 8 }} onPress={retake} />
-            <Button title="Submit" style={{ flex: 1 }} onPress={submit} loading={submitting} />
+            <Button
+              title="Retake"
+              variant="outline"
+              style={{ flex: 1, marginRight: 8 }}
+              onPress={retake}
+            />
+            <Button
+              title="Submit"
+              style={{ flex: 1 }}
+              onPress={submit}
+              loading={submitting}
+            />
           </>
         ) : (
-          <>
-            {/* Status text */}
+          <View style={styles.shutterRow}>
             <Text style={styles.hint}>
-              {capturing
-                ? 'Capturing…'
-                : cameraReady
-                ? 'Auto-capturing… or tap 📷'
-                : 'Starting camera…'}
+              {cameraReady ? 'Tap to capture' : 'Starting camera…'}
             </Text>
-            {/* Manual capture button — always visible as fallback */}
             <Pressable
               onPress={takePhoto}
               disabled={!cameraReady || capturing}
-              style={[styles.captureBtn, (!cameraReady || capturing) && { opacity: 0.4 }]}
+              style={[styles.shutter, (!cameraReady || capturing) && { opacity: 0.4 }]}
             >
-              <Text style={{ fontSize: 26 }}>📷</Text>
+              <View style={styles.shutterInner} />
             </Pressable>
-          </>
+          </View>
         )}
       </View>
     </View>
@@ -182,23 +162,31 @@ const styles = StyleSheet.create({
   },
   bar: {
     flexDirection: 'row',
-    alignItems: 'center',
     padding: 16,
     backgroundColor: 'rgba(0,0,0,0.75)',
   },
-  hint: {
-    color: '#fff',
+  shutterRow: {
     flex: 1,
+    alignItems: 'center',
+    gap: 12,
+  },
+  hint: {
+    color: '#ccc',
     fontSize: 14,
   },
-  captureBtn: {
+  shutter: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 4,
+    borderColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shutterInner: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: '#fff',
   },
 });

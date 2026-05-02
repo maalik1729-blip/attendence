@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Alert,
   Image,
-  Platform,
   Pressable,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -30,33 +29,21 @@ export default function AdminFaceRegisterScreen({ route, navigation }) {
   const [cameraReady, setCameraReady] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const cameraRef = useRef(null);
-  const autoCaptureTimer = useRef(null);
 
   useEffect(() => {
     (async () => {
       if (!permission?.granted) await requestPermission();
     })();
-    return () => {
-      if (autoCaptureTimer.current) clearTimeout(autoCaptureTimer.current);
-    };
   }, [permission, requestPermission]);
 
-  const onCameraReady = () => {
-    setCameraReady(true);
-    if (photo) return;
-    autoCaptureTimer.current = setTimeout(() => {
-      takePhoto();
-    }, 800);
-  };
-
   const takePhoto = async () => {
-    if (!cameraRef.current || capturing || photo) return;
+    if (!cameraRef.current || capturing || !cameraReady || photo) return;
     setCapturing(true);
     try {
       const shot = await cameraRef.current.takePictureAsync({ quality: 0.8 });
       if (shot?.uri) setPhoto(shot);
     } catch (err) {
-      Alert.alert('Camera error', 'Could not capture. Tap the 📷 button to try manually.');
+      Alert.alert('Camera error', 'Could not capture. Please try again.');
     } finally {
       setCapturing(false);
     }
@@ -65,7 +52,6 @@ export default function AdminFaceRegisterScreen({ route, navigation }) {
   const retake = () => {
     setPhoto(null);
     setCameraReady(false);
-    if (autoCaptureTimer.current) clearTimeout(autoCaptureTimer.current);
   };
 
   const submit = async () => {
@@ -129,7 +115,7 @@ export default function AdminFaceRegisterScreen({ route, navigation }) {
           ref={cameraRef}
           style={{ flex: 1 }}
           facing="front"
-          onCameraReady={Platform.OS === 'web' ? undefined : onCameraReady}
+          onCameraReady={() => setCameraReady(true)}
         />
       )}
 
@@ -158,22 +144,18 @@ export default function AdminFaceRegisterScreen({ route, navigation }) {
             />
           </>
         ) : (
-          <>
-            <Text style={{ color: '#fff', flex: 1, fontSize: 14 }}>
-              {capturing
-                ? 'Capturing…'
-                : cameraReady
-                ? 'Auto-capturing… or tap 📷'
-                : 'Starting camera…'}
+          <View style={styles.shutterRow}>
+            <Text style={{ color: '#ccc', fontSize: 14 }}>
+              {capturing ? 'Capturing…' : cameraReady ? 'Tap to capture' : 'Starting camera…'}
             </Text>
             <Pressable
               onPress={takePhoto}
               disabled={!cameraReady || capturing}
-              style={[styles.captureBtn, (!cameraReady || capturing) && { opacity: 0.4 }]}
+              style={[styles.shutter, (!cameraReady || capturing) && { opacity: 0.4 }]}
             >
-              <Text style={{ fontSize: 26 }}>📷</Text>
+              <View style={styles.shutterInner} />
             </Pressable>
-          </>
+          </View>
         )}
       </View>
     </View>
@@ -228,14 +210,24 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: 'rgba(0,0,0,0.8)',
   },
-  captureBtn: {
+  shutterRow: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 12,
+  },
+  shutter: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 4,
+    borderColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shutterInner: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: '#fff',
   },
 });
