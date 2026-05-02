@@ -3,6 +3,7 @@ const Attendance = require('../models/Attendance');
 const ApiError = require('../utils/ApiError');
 const { generatePassword } = require('../utils/password');
 const { sendApprovalEmail, sendRejectionEmail } = require('../utils/mailer');
+const { uploadBuffer } = require('../utils/cloudinary');
 
 /** GET /api/admin/requests — pending registrations */
 async function listRequests(req, res, next) {
@@ -148,6 +149,35 @@ async function removeEmployee(req, res, next) {
   }
 }
 
+/**
+ * POST /api/admin/employees/:id/face
+ * multipart/form-data: file=photo
+ * Uploads the employee's reference face photo to Cloudinary.
+ * Clears any stale faceDescriptor so next attendance re-enrolls cleanly.
+ */
+async function enrollFace(req, res, next) {
+  try {
+    if (!req.file) throw new ApiError(400, 'Photo is required');
+    const { id } = req.params;
+    const user = await User.findById(id).select('+faceDescriptor');
+    if (!user) throw new ApiError(404, 'Employee not found');
+    if (user.role === 'admin') throw new ApiError(400, 'Cannot enroll admin face');
+
+    const uploaded = await uploadBuffer(req.file.buffer);
+    user.faceImageUrl = uploaded.secure_url;
+    // Clear stale descriptor so the first check-in re-enrolls with fresh photo
+    user.faceDescriptor = null;
+    await user.save();
+
+    return res.json({
+      message: 'Face enrolled successfully',
+      faceImageUrl: user.faceImageUrl,
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   listRequests,
   decideRequest,
@@ -155,4 +185,5 @@ module.exports = {
   stats,
   listAttendance,
   removeEmployee,
+  enrollFace,
 };

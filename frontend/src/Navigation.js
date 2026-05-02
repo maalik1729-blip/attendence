@@ -17,6 +17,7 @@ import AttendanceScreen from './screens/AttendanceScreen';
 import AdminHomeScreen from './screens/AdminHomeScreen';
 import AdminRequestsScreen from './screens/AdminRequestsScreen';
 import AdminEmployeesScreen from './screens/AdminEmployeesScreen';
+import AdminFaceRegisterScreen from './screens/AdminFaceRegisterScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -116,6 +117,11 @@ function AdminStack() {
       <Stack.Screen name="AdminHome" component={AdminHomeScreen} options={{ title: 'Admin' }} />
       <Stack.Screen name="AdminRequests" component={AdminRequestsScreen} options={{ title: 'Requests' }} />
       <Stack.Screen name="AdminEmployees" component={AdminEmployeesScreen} options={{ title: 'Employees' }} />
+      <Stack.Screen
+        name="AdminFaceRegister"
+        component={AdminFaceRegisterScreen}
+        options={{ title: 'Register Face', headerShown: true }}
+      />
     </Stack.Navigator>
   );
 }

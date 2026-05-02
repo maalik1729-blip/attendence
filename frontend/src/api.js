@@ -67,4 +67,6 @@ export const api = {
   adminEmployees: () => request('/api/admin/employees'),
   adminAttendance: (q = '') => request(`/api/admin/attendance${q}`),
   removeEmployee: (id) => request(`/api/admin/employees/${id}`, { method: 'DELETE' }),
+  enrollFace: (id, formData) =>
+    request(`/api/admin/employees/${id}/face`, { method: 'POST', body: formData, isForm: true }),
 };
