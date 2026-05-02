@@ -1,8 +1,11 @@
+import { useTheme } from './ThemeContext';
 import React from 'react';
 import { Pressable, Text, StyleSheet, ActivityIndicator, View } from 'react-native';
-import { COLORS } from './config';
+
 
 export function Button({ title, onPress, loading, variant = 'primary', style, disabled }) {
+  const { theme: COLORS } = useTheme();
+  const styles = getStyles(COLORS);
   const bg =
     variant === 'danger'
       ? COLORS.danger
@@ -30,10 +33,14 @@ export function Button({ title, onPress, loading, variant = 'primary', style, di
 }
 
 export function Card({ children, style }) {
+  const { theme: COLORS } = useTheme();
+  const styles = getStyles(COLORS);
   return <View style={[styles.card, style]}>{children}</View>;
 }
 
 export function Field({ label, children, error }) {
+  const { theme: COLORS } = useTheme();
+  const styles = getStyles(COLORS);
   return (
     <View style={{ marginBottom: 12 }}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
@@ -43,11 +50,9 @@ export function Field({ label, children, error }) {
   );
 }
 
-export function Screen({ children, style }) {
-  return <View style={[styles.screen, style]}>{children}</View>;
-}
+export function Screen({ children, style }) { const { theme: COLORS } = useTheme(); const styles = getStyles(COLORS); return <View style={[[styles.screen, style], { paddingTop: 40, paddingBottom: 40 }]}>{children}</View>; }
 
-const styles = StyleSheet.create({
+const getStyles = (COLORS) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.bg, padding: 16 },
   btn: {
     paddingVertical: 12,
@@ -72,7 +77,7 @@ const styles = StyleSheet.create({
   error: { color: COLORS.danger, fontSize: 12, marginTop: 4 },
 });
 
-export const inputStyle = {
+export const getInputStyle = (COLORS) => ({
   backgroundColor: '#fff',
   borderWidth: 1,
   borderColor: COLORS.border,
@@ -81,4 +86,4 @@ export const inputStyle = {
   paddingVertical: 10,
   color: COLORS.text,
   fontSize: 15,
-};
+});

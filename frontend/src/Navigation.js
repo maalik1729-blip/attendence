@@ -3,6 +3,10 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Pressable, View, Text, ActivityIndicator } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import { useTheme } from './ThemeContext';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Pressable, View, Text, ActivityIndicator } from 'react-native';
 
 import { useAuth } from './AuthContext';
 import { COLORS } from './config';
@@ -22,16 +26,21 @@ import AdminFaceRegisterScreen from './screens/AdminFaceRegisterScreen';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-function Icon({ label, focused }) {
+function Icon({ label, name, focused }) {
+  const { theme: COLORS } = useTheme();
   return (
-    <Text style={{ color: focused ? COLORS.primary : COLORS.muted, fontSize: 11, fontWeight: '600' }}>
-      {label}
-    </Text>
+    <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 4 }}>
+      <Feather name={name} size={20} color={focused ? COLORS.primary : COLORS.muted} style={{ marginBottom: 2 }} />
+      <Text style={{ color: focused ? COLORS.primary : COLORS.muted, fontSize: 10, fontWeight: '600' }}>
+        {label}
+      </Text>
+    </View>
   );
 }
 
 // Center attendance button — big round accent
 function AttendanceTabButton({ onPress }) {
+  const { theme: COLORS } = useTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -56,23 +65,24 @@ function AttendanceTabButton({ onPress }) {
 }
 
 function EmployeeTabs() {
+  const { theme: COLORS } = useTheme();
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
-        tabBarStyle: { height: 64, paddingBottom: 8 },
+        tabBarStyle: { height: 64, paddingBottom: 8, backgroundColor: COLORS.card, borderTopColor: COLORS.border },
       }}
     >
       <Tab.Screen
         name="Home"
         component={HomeScreen}
-        options={{ tabBarIcon: ({ focused }) => <Icon label="HOME" focused={focused} /> }}
+        options={{ tabBarIcon: ({ focused }) => <Icon label="HOME" name="home" focused={focused} /> }}
       />
       <Tab.Screen
         name="Reports"
         component={ReportsScreen}
-        options={{ tabBarIcon: ({ focused }) => <Icon label="REPORTS" focused={focused} /> }}
+        options={{ tabBarIcon: ({ focused }) => <Icon label="REPORTS" name="file-text" focused={focused} /> }}
       />
       <Tab.Screen
         name="Attendance"
@@ -85,28 +95,29 @@ function EmployeeTabs() {
       <Tab.Screen
         name="Holidays"
         component={HolidaysScreen}
-        options={{ tabBarIcon: ({ focused }) => <Icon label="HOLIDAYS" focused={focused} /> }}
+        options={{ tabBarIcon: ({ focused }) => <Icon label="HOLIDAYS" name="calendar" focused={focused} /> }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{ tabBarIcon: ({ focused }) => <Icon label="PROFILE" focused={focused} /> }}
+        options={{ tabBarIcon: ({ focused }) => <Icon label="PROFILE" name="user" focused={focused} /> }}
       />
     </Tab.Navigator>
   );
 }
 
 function AdminTabs() {
+  const { theme: COLORS } = useTheme();
   return (
-    <Tab.Navigator screenOptions={{ headerShown: false, tabBarShowLabel: false }}>
+    <Tab.Navigator screenOptions={{ headerShown: false, tabBarShowLabel: false, tabBarStyle: { height: 64, paddingBottom: 8, backgroundColor: COLORS.card, borderTopColor: COLORS.border } }}>
       <Tab.Screen name="Dashboard" component={AdminStack}
-        options={{ tabBarIcon: ({ focused }) => <Icon label="DASHBOARD" focused={focused} /> }}
+        options={{ tabBarIcon: ({ focused }) => <Icon label="DASHBOARD" name="grid" focused={focused} /> }}
       />
       <Tab.Screen name="Holidays" component={AdminHolidayStack}
-        options={{ tabBarIcon: ({ focused }) => <Icon label="HOLIDAYS" focused={focused} /> }}
+        options={{ tabBarIcon: ({ focused }) => <Icon label="HOLIDAYS" name="calendar" focused={focused} /> }}
       />
       <Tab.Screen name="Profile" component={ProfileScreen}
-        options={{ tabBarIcon: ({ focused }) => <Icon label="PROFILE" focused={focused} /> }}
+        options={{ tabBarIcon: ({ focused }) => <Icon label="PROFILE" name="user" focused={focused} /> }}
       />
     </Tab.Navigator>
   );
