@@ -10,6 +10,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as FaceDetector from 'expo-face-detector';
 import * as Location from 'expo-location';
 import { api } from '../api';
 import { Button } from '../ui';
@@ -26,28 +27,50 @@ export default function AttendanceScreen({ navigation }) {
   const captureTriggered = useRef(false);
   const cameraRef = useRef(null);
 
-  // Called continuously by CameraView when faces change
-  const onFacesDetected = ({ faces }) => {
-    const detected = faces && faces.length > 0;
-    setFaceDetected(detected);
+  const detectingRef = useRef(false);
+  const intervalRef = useRef(null);
 
-    // Auto-capture once when face first appears
-    if (detected && !captureTriggered.current && !photo && cameraReady) {
-      captureTriggered.current = true;
-      takePhoto();
-    }
-  };
-
-  const takePhoto = async () => {
-    if (!cameraRef.current) return;
+  const detectFaceLoop = async () => {
+    if (!cameraRef.current || captureTriggered.current || detectingRef.current || !cameraReady || photo) return;
+    detectingRef.current = true;
     try {
-      const shot = await cameraRef.current.takePictureAsync({ quality: 0.8 });
-      if (shot?.uri) setPhoto(shot);
-    } catch {
-      // If auto-capture fails, user can retake manually
-      captureTriggered.current = false;
+      // Take a low-res fast snapshot for detection
+      const snap = await cameraRef.current.takePictureAsync({ quality: 0.1, skipProcessing: true });
+      if (!snap?.uri) return;
+
+      const result = await FaceDetector.detectFacesAsync(snap.uri, {
+        mode: FaceDetector.FaceDetectorMode.fast,
+        detectLandmarks: FaceDetector.FaceDetectorLandmarks.none,
+        runClassifications: FaceDetector.FaceDetectorClassifications.none,
+      });
+
+      const detected = result && result.faces && result.faces.length > 0;
+      setFaceDetected(detected);
+
+      if (detected && !captureTriggered.current) {
+        captureTriggered.current = true;
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        // Take a high-res photo for submission
+        const fullShot = await cameraRef.current.takePictureAsync({ quality: 0.8 });
+        if (fullShot?.uri) setPhoto(fullShot);
+      }
+    } catch (e) {
+      // ignore
+    } finally {
+      detectingRef.current = false;
     }
   };
+
+  React.useEffect(() => {
+    if (cameraReady && !photo) {
+      intervalRef.current = setInterval(detectFaceLoop, 800);
+    }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [cameraReady, photo]);
+
+
 
   const retake = () => {
     setPhoto(null);
@@ -152,14 +175,6 @@ export default function AttendanceScreen({ navigation }) {
             style={{ flex: 1 }}
             facing="front"
             onCameraReady={() => setCameraReady(true)}
-            onFacesDetected={onFacesDetected}
-            faceDetectorSettings={{
-              mode: 'fast',
-              detectLandmarks: 'none',
-              runClassifications: 'none',
-              minDetectionInterval: 150,
-              tracking: true,
-            }}
           />
 
           {/* Oval face guide — green when face detected */}
