@@ -7,6 +7,7 @@ import {
   Image,
   Pressable,
   Animated,
+  Dimensions,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
@@ -178,6 +179,10 @@ export default function AttendanceScreen({ navigation }) {
   );
 }
 
+const { width, height } = Dimensions.get('window');
+const OVAL_W = width * 0.78;
+const OVAL_H = height * 0.55;
+
 const styles = StyleSheet.create({
   center: {
     flex: 1,
@@ -192,11 +197,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   oval: {
-    width: 210,
-    height: 270,
-    borderRadius: 135,
+    width: OVAL_W,
+    height: OVAL_H,
+    borderRadius: OVAL_W / 2,
     borderWidth: 3,
-    marginBottom: 80, // shift up a bit from bar
+    marginBottom: 80,
   },
   ovalIdle: {
     borderColor: 'rgba(255,255,255,0.5)',
@@ -204,8 +209,8 @@ const styles = StyleSheet.create({
   ovalGreen: {
     borderColor: '#00e676',
     shadowColor: '#00e676',
-    shadowOpacity: 0.8,
-    shadowRadius: 12,
+    shadowOpacity: 0.9,
+    shadowRadius: 16,
     shadowOffset: { width: 0, height: 0 },
   },
   bar: {
