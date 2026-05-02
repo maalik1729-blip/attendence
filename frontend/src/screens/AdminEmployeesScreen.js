@@ -11,9 +11,11 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../api';
 import { Button, Card, Screen } from '../ui';
-import { COLORS } from '../config';
+import { useTheme } from '../ThemeContext';
+
 
 export default function AdminEmployeesScreen({ navigation }) {
+  const { theme: COLORS } = useTheme();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

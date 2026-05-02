@@ -1,3 +1,4 @@
+import { useTheme } from '../ThemeContext';
 import React, { useCallback, useState } from 'react';
 import { Text, View, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -5,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import { Card, Screen } from '../ui';
-import { COLORS } from '../config';
+
 
 function Stat({ label, value, color }) {
   return (
@@ -17,6 +18,7 @@ function Stat({ label, value, color }) {
 }
 
 export default function HomeScreen() {
+  const { theme: COLORS } = useTheme();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [summary, setSummary] = useState(null);

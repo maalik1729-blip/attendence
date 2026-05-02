@@ -1,11 +1,13 @@
+import { useTheme } from '../ThemeContext';
 import React, { useState } from 'react';
 import { Text, TextInput, Alert, ScrollView, View } from 'react-native';
 import { useAuth } from '../AuthContext';
 import { api } from '../api';
 import { Button, Card, Field, inputStyle } from '../ui';
-import { COLORS } from '../config';
+
 
 export default function ProfileScreen() {
+  const { theme: COLORS } = useTheme();
   const { user, signOut, refresh, mustChangePassword, setMustChangePassword } = useAuth();
 
   const [currentPassword, setCurrent] = useState('');

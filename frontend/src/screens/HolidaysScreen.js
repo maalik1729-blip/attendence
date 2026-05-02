@@ -1,11 +1,13 @@
+import { useTheme } from '../ThemeContext';
 import React, { useCallback, useState } from 'react';
 import { Text, View, FlatList, RefreshControl, ActivityIndicator } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../api';
 import { Card, Screen } from '../ui';
-import { COLORS } from '../config';
+
 
 export default function HolidaysScreen() {
+  const { theme: COLORS } = useTheme();
   const [holidays, setHolidays] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

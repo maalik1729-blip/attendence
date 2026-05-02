@@ -1,10 +1,12 @@
+import { useTheme } from '../ThemeContext';
 import React, { useState } from 'react';
 import { Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { api } from '../api';
 import { Button, Card, Field, Screen, inputStyle } from '../ui';
-import { COLORS } from '../config';
+
 
 export default function RegisterScreen({ navigation }) {
+  const { theme: COLORS } = useTheme();
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',

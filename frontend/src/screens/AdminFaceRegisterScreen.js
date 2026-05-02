@@ -1,3 +1,4 @@
+import { useTheme } from '../ThemeContext';
 import React, { useRef, useState } from 'react';
 import {
   View,
@@ -10,7 +11,7 @@ import {
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { api } from '../api';
 import { Button } from '../ui';
-import { COLORS } from '../config';
+
 
 /**
  * AdminFaceRegisterScreen
@@ -21,6 +22,8 @@ import { COLORS } from '../config';
  * Route params: { employeeId, employeeName }
  */
 export default function AdminFaceRegisterScreen({ route, navigation }) {
+  const { theme: COLORS } = useTheme();
+  const styles = getStyles(COLORS);
   const { employeeId, employeeName } = route.params ?? {};
 
   const [permission, requestPermission] = useCameraPermissions();
@@ -151,7 +154,7 @@ const { width, height } = Dimensions.get('window');
 const OVAL_W = width * 0.78;
 const OVAL_H = height * 0.50; // slightly smaller to account for the top banner
 
-const styles = StyleSheet.create({
+const getStyles = (COLORS) => StyleSheet.create({
   center: {
     flex: 1,
     alignItems: 'center',

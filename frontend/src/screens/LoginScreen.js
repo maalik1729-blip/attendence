@@ -1,10 +1,12 @@
+import { useTheme } from '../ThemeContext';
 import React, { useState } from 'react';
 import { Text, TextInput, View, KeyboardAvoidingView, Platform, Alert, ScrollView } from 'react-native';
 import { useAuth } from '../AuthContext';
 import { Button, Card, Field, Screen, inputStyle } from '../ui';
-import { COLORS } from '../config';
+
 
 export default function LoginScreen({ navigation }) {
+  const { theme: COLORS } = useTheme();
   const { signIn } = useAuth();
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');

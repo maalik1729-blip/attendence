@@ -1,3 +1,4 @@
+import { useTheme } from '../ThemeContext';
 import React, { useRef, useState } from 'react';
 import {
   View,
@@ -13,10 +14,12 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
 import { api } from '../api';
 import { Button } from '../ui';
-import { COLORS } from '../config';
+
 import { useAuth } from '../AuthContext';
 
 export default function AttendanceScreen({ navigation }) {
+  const { theme: COLORS } = useTheme();
+  const styles = getStyles(COLORS);
   const { mustChangePassword } = useAuth();
   const [permission, requestPermission] = useCameraPermissions();
   const [photo, setPhoto] = useState(null);
@@ -161,7 +164,7 @@ const { width, height } = Dimensions.get('window');
 const OVAL_W = width * 0.78;
 const OVAL_H = height * 0.55;
 
-const styles = StyleSheet.create({
+const getStyles = (COLORS) => StyleSheet.create({
   center: {
     flex: 1,
     alignItems: 'center',

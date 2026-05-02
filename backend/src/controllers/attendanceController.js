@@ -34,10 +34,6 @@ async function checkIn(req, res, next) {
     }
 
     const date = todayYMD();
-    const existing = await Attendance.findOne({ user: req.user.id, date });
-    if (existing) {
-      throw new ApiError(409, 'Attendance already marked for today');
-    }
 
     const user = await User.findById(req.user.id).select('+faceDescriptor');
 
@@ -65,6 +61,14 @@ async function checkIn(req, res, next) {
     if (!uploaded.faces || uploaded.faces.length === 0) {
       await cloudinary.uploader.destroy(uploaded.public_id);
       throw new ApiError(400, 'No face detected in the photo! Please ensure your face is clearly visible and try again.', 'NO_FACE_DETECTED');
+    }
+
+    // Now check if attendance is already marked for today
+    const existing = await Attendance.findOne({ user: req.user.id, date });
+    if (existing) {
+      // Clean up the image since we won't use it
+      await cloudinary.uploader.destroy(uploaded.public_id);
+      throw new ApiError(409, 'Attendance already marked for today');
     }
 
     // First-time enrolment: save the descriptor + face image
