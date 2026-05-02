@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -6,18 +6,20 @@ import {
   Alert,
   Image,
   Dimensions,
-  ActivityIndicator,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as FileSystem from 'expo-file-system';
-import * as tf from '@tensorflow/tfjs';
-import '@tensorflow/tfjs-react-native';
-import * as blazeface from '@tensorflow-models/blazeface';
-import { decodeJpeg } from '@tensorflow/tfjs-react-native';
 import { api } from '../api';
 import { Button } from '../ui';
 import { COLORS } from '../config';
 
+/**
+ * AdminFaceRegisterScreen
+ * Opens the front camera with live face detection.
+ * When a face is detected the oval turns green and the photo is auto-captured.
+ * Admin can then Submit or Retake.
+ *
+ * Route params: { employeeId, employeeName }
+ */
 export default function AdminFaceRegisterScreen({ route, navigation }) {
   const { employeeId, employeeName } = route.params ?? {};
 
@@ -26,83 +28,28 @@ export default function AdminFaceRegisterScreen({ route, navigation }) {
   const [submitting, setSubmitting] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [faceDetected, setFaceDetected] = useState(false);
-  const [modelReady, setModelReady] = useState(false);
-
   const captureTriggered = useRef(false);
   const cameraRef = useRef(null);
-  const modelRef = useRef(null);
-  const intervalRef = useRef(null);
-  const detectingRef = useRef(false);
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      await tf.ready();
-      const m = await blazeface.load();
-      if (mounted) {
-        modelRef.current = m;
-        setModelReady(true);
-      }
-    })();
-    return () => {
-      mounted = false;
-      stopDetection();
-    };
-  }, []);
+  const onFacesDetected = ({ faces }) => {
+    const detected = faces && faces.length > 0;
+    setFaceDetected(detected);
 
-  useEffect(() => {
-    (async () => {
-      if (!permission?.granted) await requestPermission();
-    })();
-  }, [permission, requestPermission]);
-
-  const stopDetection = () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
+    if (detected && !captureTriggered.current && !photo && cameraReady) {
+      captureTriggered.current = true;
+      takePhoto();
     }
   };
 
-  const detectFace = useCallback(async () => {
-    if (!cameraRef.current || captureTriggered.current || detectingRef.current) return;
-    detectingRef.current = true;
+  const takePhoto = async () => {
+    if (!cameraRef.current) return;
     try {
-      const snap = await cameraRef.current.takePictureAsync({ quality: 0.25 });
-      if (!snap?.uri) return;
-
-      const b64 = await FileSystem.readAsStringAsync(snap.uri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-
-      const binaryStr = atob(b64);
-      const bytes = new Uint8Array(binaryStr.length);
-      for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
-      const tensor = decodeJpeg(bytes);
-
-      const predictions = await modelRef.current.estimateFaces(tensor, false);
-      tf.dispose(tensor);
-
-      const detected = predictions && predictions.length > 0;
-      setFaceDetected(detected);
-
-      if (detected && !captureTriggered.current) {
-        captureTriggered.current = true;
-        stopDetection();
-        const fullShot = await cameraRef.current.takePictureAsync({ quality: 0.8 });
-        if (fullShot?.uri) setPhoto(fullShot);
-      }
+      const shot = await cameraRef.current.takePictureAsync({ quality: 0.8 });
+      if (shot?.uri) setPhoto(shot);
     } catch {
-      // Skip frame silently
-    } finally {
-      detectingRef.current = false;
+      captureTriggered.current = false;
     }
-  }, []);
-
-  useEffect(() => {
-    if (!cameraReady || !modelReady || photo) return;
-    intervalRef.current = setInterval(detectFace, 500);
-    return stopDetection;
-  }, [cameraReady, modelReady, photo, detectFace]);
+  };
 
   const retake = () => {
     setPhoto(null);
@@ -140,6 +87,7 @@ export default function AdminFaceRegisterScreen({ route, navigation }) {
       </View>
     );
   }
+
   if (!permission.granted) {
     return (
       <View style={styles.center}>
@@ -163,6 +111,7 @@ export default function AdminFaceRegisterScreen({ route, navigation }) {
       </View>
 
       {photo ? (
+        /* ── Captured preview ── */
         <>
           <Image source={{ uri: photo.uri }} style={{ flex: 1 }} resizeMode="cover" />
           <View style={styles.ovalWrap} pointerEvents="none">
@@ -184,27 +133,33 @@ export default function AdminFaceRegisterScreen({ route, navigation }) {
           </View>
         </>
       ) : (
+        /* ── Live camera ── */
         <>
           <CameraView
             ref={cameraRef}
             style={{ flex: 1 }}
             facing="front"
             onCameraReady={() => setCameraReady(true)}
+            onFacesDetected={onFacesDetected}
+            faceDetectorSettings={{
+              mode: 'fast',
+              detectLandmarks: 'none',
+              runClassifications: 'none',
+              minDetectionInterval: 150,
+              tracking: true,
+            }}
           />
+
+          {/* Oval face guide */}
           <View style={styles.ovalWrap} pointerEvents="none">
             <View style={[styles.oval, faceDetected ? styles.ovalGreen : styles.ovalIdle]} />
           </View>
+
+          {/* Status */}
           <View style={styles.bar}>
-            {!modelReady ? (
-              <View style={styles.loadRow}>
-                <ActivityIndicator size="small" color="#fff" />
-                <Text style={[styles.hint, { marginLeft: 10 }]}>Loading face model…</Text>
-              </View>
-            ) : (
-              <Text style={[styles.hint, faceDetected && styles.hintGreen]}>
-                {faceDetected ? '✓ Face detected — capturing…' : 'Position face in the oval'}
-              </Text>
-            )}
+            <Text style={[styles.hint, faceDetected && styles.hintGreen]}>
+              {faceDetected ? '✓ Face detected — capturing…' : 'Position face in the oval'}
+            </Text>
           </View>
         </>
       )}
@@ -214,7 +169,7 @@ export default function AdminFaceRegisterScreen({ route, navigation }) {
 
 const { width, height } = Dimensions.get('window');
 const OVAL_W = width * 0.78;
-const OVAL_H = height * 0.50;
+const OVAL_H = height * 0.50; // slightly smaller to account for the top banner
 
 const styles = StyleSheet.create({
   center: {
@@ -272,12 +227,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     backgroundColor: 'rgba(0,0,0,0.8)',
-  },
-  loadRow: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   hint: {
     flex: 1,
